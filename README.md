@@ -1,36 +1,75 @@
-This is a [Next.js](https://nextjs.org) project bootstrapped with [`create-next-app`](https://nextjs.org/docs/app/api-reference/cli/create-next-app).
+## CA Traffics
 
-## Getting Started
+This repository contains a Next.js 15 front-end that visualizes California highway conditions with MapLibre along with a lightweight Cloudflare Worker that serves traffic data in a friendly shape for the UI. The goal is to provide a faster, easier-to-use alternative to [QuickMap](https://quickmap.dot.ca.gov).
 
-First, run the development server:
+---
+
+## Prerequisites
+
+- Node.js 20+
+- pnpm or npm (examples below use npm)
+- [Wrangler CLI](https://developers.cloudflare.com/workers/wrangler/install-and-update/)
+- Optional: [Vercel CLI](https://vercel.com/docs/cli) for local previews
+
+Install dependencies:
 
 ```bash
-npm run dev
-# or
-yarn dev
-# or
-pnpm dev
-# or
-bun dev
+npm install
 ```
 
-Open [http://localhost:3000](http://localhost:3000) with your browser to see the result.
+Copy the sample environment file and adjust values as needed:
 
-You can start editing the page by modifying `app/page.tsx`. The page auto-updates as you edit the file.
+```bash
+cp .env.example .env.local
+```
 
-This project uses [`next/font`](https://nextjs.org/docs/app/building-your-application/optimizing/fonts) to automatically optimize and load [Geist](https://vercel.com/font), a new font family for Vercel.
+`NEXT_PUBLIC_API_BASE` should point to your Worker endpoint. When developing locally, keep the default `http://localhost:8787`.
 
-## Learn More
+---
 
-To learn more about Next.js, take a look at the following resources:
+## Local Development
 
-- [Next.js Documentation](https://nextjs.org/docs) - learn about Next.js features and API.
-- [Learn Next.js](https://nextjs.org/learn) - an interactive Next.js tutorial.
+1. Start the Cloudflare Worker API in one terminal:
 
-You can check out [the Next.js GitHub repository](https://github.com/vercel/next.js) - your feedback and contributions are welcome!
+   ```bash
+   npm run worker:dev
+   ```
 
-## Deploy on Vercel
+   Wrangler hosts the Worker at `http://localhost:8787`.
 
-The easiest way to deploy your Next.js app is to use the [Vercel Platform](https://vercel.com/new?utm_medium=default-template&filter=next.js&utm_source=create-next-app&utm_campaign=create-next-app-readme) from the creators of Next.js.
+2. Start the Next.js app in another terminal:
 
-Check out our [Next.js deployment documentation](https://nextjs.org/docs/app/building-your-application/deploying) for more details.
+   ```bash
+   npm run dev
+   ```
+
+   Visit `http://localhost:3000` to interact with the map. The UI polls `/v1/traffic/incidents`, `/v1/traffic/roads`, and `/v1/meta/sources` from the Worker. Without real Caltrans feeds configured, the Worker returns demo data so the interface stays functional.
+
+---
+
+## Deployment
+
+### Cloudflare Worker (Traffic API)
+
+1. Configure environment variables in the Cloudflare dashboard (or via `wrangler secret/vars`), e.g.:
+   - `INCIDENTS_FEED_URL`
+   - `ROADS_FEED_URL`
+   - `META_FEED_URL`
+   - `CORS_ALLOW_ORIGIN` (set to your Vercel domain)
+2. Deploy the Worker:
+
+   ```bash
+   npm run worker:deploy
+   ```
+
+   The published URL (e.g. `https://ca-traffics-api.your-account.workers.dev`) becomes the base for `NEXT_PUBLIC_API_BASE`.
+
+### Vercel (Web App)
+
+1. Connect this repository to Vercel and set build command to `npm run build`.
+2. Add the following environment variables in **Project Settings → Environment Variables**:
+   - `NEXT_PUBLIC_API_BASE` → `https://<worker-hostname>`
+   - Optional map styling variables such as `NEXT_PUBLIC_MAP_STYLE` and `NEXT_PUBLIC_MAPTILER_KEY`.
+3. Trigger a deployment (push to the main branch or run `vercel --prod`).
+
+Once both surfaces are live, the Vercel-hosted UI will consume data from the Cloudflare Worker, and the Worker can be updated independently as new data integrations are added.
